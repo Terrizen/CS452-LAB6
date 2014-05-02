@@ -36,6 +36,71 @@ GLfloat colorarray[]={0.9f,0.6f,0.4f,1.0f,
                   7,3,0,4,5,6,2,1,
                   0,1,5,4,7,3,2,6
                  };
+                 
+  virtual void RenderSceneCB()// rotate object with a shadow following it
+  {
+    m_pGameCamera->OnRender();
+    m_scale += 0.05f;
+
+    ShadowMapPass();
+    RenderPass();
+
+    glutSwapBuffers();
+  }
+  
+  virtual void ShadowMapPass()//pass the shasow throught the prgramm and enable it
+  {
+    m_shadowMapFBO.BindForWriting();
+
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    m_pShadowMapEffect->Enable();
+
+    Pipeline p;
+    p.Scale(0.1f, 0.1f, 0.1f);
+    p.Rotate(0.0f, m_scale, 0.0f);
+    p.WorldPos(0.0f, 0.0f, 3.0f);
+    p.SetCamera(m_spotLight.Position, m_spotLight.Direction, Vector3f(0.0f, 1.0f, 0.0f));
+    p.SetPerspectiveProj(30.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 50.0f);
+    m_pShadowMapEffect->SetWVP(p.GetWVPTrans());
+    m_pMesh->Render();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+  
+  virtual void RenderPass()//replace the shadow map technique with the lighting technique and bind the shadow map frame buffer object
+  {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    m_pLightingEffect->Enable();
+
+    m_shadowMapFBO.BindForReading(GL_TEXTURE1);
+
+    Pipeline p;
+    p.SetPerspectiveProj(30.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 50.0f);
+    p.Scale(10.0f, 10.0f, 10.0f);
+    p.WorldPos(0.0f, 0.0f, 1.0f);
+    p.Rotate(90.0f, 0.0f, 0.0f);
+    p.SetCamera(m_pGameCamera->GetPos(), m_pGameCamera->GetTarget(), m_pGameCamera->GetUp());
+    m_pLightingEffect->SetWVP(p.GetWVPTrans());
+    m_pLightingEffect->SetWorldMatrix(p.GetWorldTrans());
+    p.SetCamera(m_spotLight.Position, m_spotLight.Direction, Vector3f(0.0f, 1.0f, 0.0f));
+    m_pLightingEffect->SetLightWVP(p.GetWVPTrans());
+    m_pLightingEffect->SetEyeWorldPos(m_pGameCamera->GetPos());
+    m_pGroundTex->Bind(GL_TEXTURE0);
+    m_pQuad->Render();
+
+    p.Scale(0.1f, 0.1f, 0.1f);
+    p.Rotate(0.0f, m_scale, 0.0f);
+    p.WorldPos(0.0f, 0.0f, 3.0f);
+    p.SetCamera(m_pGameCamera->GetPos(), m_pGameCamera->GetTarget(), m_pGameCamera->GetUp());
+    m_pLightingEffect->SetWVP(p.GetWVPTrans());
+    m_pLightingEffect->SetWorldMatrix(p.GetWorldTrans());
+    p.SetCamera(m_spotLight.Position, m_spotLight.Direction, Vector3f(0.0f, 1.0f, 0.0f));
+    m_pLightingEffect->SetLightWVP(p.GetWVPTrans());
+
+    m_pMesh->Render();
+  }
 
 void init(){
          glEnable(GL_DEPTH_TEST);
@@ -67,6 +132,18 @@ void init(){
 
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
+  
+  m_pLightingEffect = new LightingTechnique();
+
+  if (!m_pLightingEffect->Init()) {
+    printf("Error initializing the lighting technique\n");
+    return false;
+  }
+
+  m_pLightingEffect->Enable();
+  m_pLightingEffect->SetSpotLights(1, &m_spotLight);
+  m_pLightingEffect->SetTextureUnit(0);
+  m_pLightingEffect->SetShadowMapTextureUnit(1);
 
   GLfloat ambientColor[] = {0.2f, 0.2f, 0.2f, 1.0f}; //Color(0.2, 0.2, 0.2)
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
@@ -206,3 +283,4 @@ int main(int argc, char **argv){
 
   return 0;
 }
+
