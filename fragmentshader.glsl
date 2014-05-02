@@ -1,4 +1,11 @@
-float CalcShadowFactor(vec4 LightSpacePos) // calculate the shadow factor of pixels
+#version 130
+
+in vec4 pass_color;
+out vec4 out_color;
+
+void main(){
+  out_color=pass_color;
+  float CalcShadowFactor(vec4 LightSpacePos) // calculate the shadow factor of pixels
 {
     vec3 ProjCoords = LightSpacePos.xyz / LightSpacePos.w;
     vec2 UVCoords;
@@ -11,3 +18,9 @@ float CalcShadowFactor(vec4 LightSpacePos) // calculate the shadow factor of pix
     else
         return 1.0;
 }
+}
+
+
+
+
+
